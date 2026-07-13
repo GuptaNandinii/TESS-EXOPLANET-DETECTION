@@ -84,7 +84,7 @@ Scans the detrended light curve sector-by-sector for periodic, box-like transit 
 
 ---
 
-## Key Differentiators (Why Voyager 3 is Different)
+## Key Differentiators 
 
 ### Differentiator 1: Physics-Guided Transit Shape Discriminants
 Instead of feeding raw, noisy flux curves into black-box neural networks, we extract physical transit shape metrics to separate exoplanets, eclipsing binaries, and background blends:
