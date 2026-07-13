@@ -1,14 +1,5 @@
 # Exoplanet Detection System (TESS Survey Transit Pipeline)
 
-### 🚀 Bharatiya Antariksh Hackathon (BAH) 2026
-*   **Team Name**: Voyager 3
-*   **Team Leader**: Nandini Gupta
-*   **Team Members**: Harsh Joshi, Nandini Gupta, Kushagra Takjhare
-*   **College**: Acropolis Institute of Technology and Research
-*   **Problem Statement**: AI-enabled Detection of Exoplanets from Noisy Astronomical Light Curves
-
----
-
 [![Python Version](https://img.shields.io/badge/Python-3.9%20%7C%203.10%20%7C%203.11-blue.svg)](https://www.python.org/)
 [![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Data Source](https://img.shields.io/badge/Data%20Source-NASA%20TESS-orange.svg)](https://heasarc.gsfc.nasa.gov/docs/tess/tess.html)
@@ -26,35 +17,45 @@ This diagram outlines the complete multi-stage processing pipeline implemented f
 
 ```mermaid
 graph TD
-    subgraph STAGE 1 & 2: Ingestion & Detrending
+    subgraph Stage1["STAGE 1 & 2: Ingestion & Detrending"]
         FITS[TESS FITS files] --> Ingest[Read FITS Binary Tables]
         Ingest --> Filter[Quality Flag Filtering]
         Filter --> Base[Savitzky-Golay Baseline Estimation]
         Base --> Norm[Stellar Flux Normalization]
     end
 
-    subgraph STAGE 3: BLS Transit Detection
+    subgraph Stage2["STAGE 3: BLS Transit Detection"]
         Norm --> BLS[Weighted BLS Search: 6000 period grid / 50 duration grid]
         BLS --> Period[Identify Best Period, Epoch, Depth, & Power]
     end
 
-    subgraph STAGE 4 & 5: Folding & Fitting
+    subgraph Stage3["STAGE 4 & 5: Folding & Fitting"]
         Period --> Fold[Phase Fold & Crop Data]
         Fold --> LM[Levenberg-Marquardt Trapezoid Fitting]
         LM --> Params[Extract Fitted Parameters: depth, T_tot, T_in, chi2_red, RMS]
     end
 
-    subgraph STAGE 6 & 7: Feature Engineering & AI
+    subgraph Stage4["STAGE 6 & 7: Feature Engineering & AI"]
         Params --> Feat[Extract 25 Physics & Morphology Features]
         Feat --> XGB[XGBoost Classifier: 5-Fold Stratified Cross-Validation]
         XGB --> Pred[Class Prediction: Planet / EB / False Positive]
     end
 
-    subgraph STAGE 8 & 9: Confidence & Ranking
+    subgraph Stage5["STAGE 8 & 9: Confidence & Ranking"]
         Pred --> Conf[Multi-Stage Confidence Assessment: SNR, SDE, FAP, red_chi2]
         Conf --> PFI[PARAS-2 Follow-up Index: log-scaled prioritization]
         PFI --> Output[High-Priority Target Candidate list for Telescope Follow-up]
     end
+
+    %% Style definitions for high contrast on all themes
+    classDef nodeStyle fill:#1e293b,stroke:#475569,stroke-width:1px,color:#f8fafc;
+    class FITS,Ingest,Filter,Base,Norm,BLS,Period,Fold,LM,Params,Feat,XGB,Pred,Conf,PFI,Output nodeStyle;
+
+    style Stage1 fill:#0f172a,stroke:#334155,stroke-width:1px,color:#f1f5f9
+    style Stage2 fill:#0f172a,stroke:#334155,stroke-width:1px,color:#f1f5f9
+    style Stage3 fill:#0f172a,stroke:#334155,stroke-width:1px,color:#f1f5f9
+    style Stage4 fill:#0f172a,stroke:#334155,stroke-width:1px,color:#f1f5f9
+    style Stage5 fill:#0f172a,stroke:#334155,stroke-width:1px,color:#f1f5f9
 ```
 
 ---
