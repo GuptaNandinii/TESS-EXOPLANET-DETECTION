@@ -1,0 +1,11 @@
+{
+  "name": "bah26-root",
+  "version": "1.0.0",
+  "description": "Unified launcher for Exoplanet Detection System",
+  "scripts": {
+    "dev": "concurrently -n \"backend,frontend\" -c \"blue,green\" \"python -u -m src.api\" \"npm --prefix frontend run dev\""
+  },
+  "devDependencies": {
+    "concurrently": "^10.0.3"
+  }
+}

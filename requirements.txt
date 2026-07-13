@@ -1,0 +1,7 @@
+numpy
+pandas
+astropy
+scipy
+xgboost
+flask
+flask-cors

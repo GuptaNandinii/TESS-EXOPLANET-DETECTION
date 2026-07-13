@@ -1,0 +1,25 @@
+# Node dependencies
+node_modules/
+dist/
+.env
+
+# Python caching & environments
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+ENV/
+env/
+.ipynb_checkpoints/
+.pytest_cache/
+
+# Astronomical raw datasets (fits files are very large)
+*.fits
+*.fit
+*.fits.gz
+*.csv
+
+# OS specific files
+.DS_Store
+Thumbs.db
