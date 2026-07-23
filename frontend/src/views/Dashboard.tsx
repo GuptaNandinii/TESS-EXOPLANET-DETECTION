@@ -110,15 +110,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ setBackendOnline }) => {
 
       try {
         const response = await axios.post<PredictionResult>('/api/predict', formData);
-        const data = response.data;
-        console.log("DEBUG RESPONSE DATA:", data);
-        const rawData = data as any;
-        const snippet = typeof rawData === 'string' ? rawData.substring(0, 200) : JSON.stringify(rawData).substring(0, 200);
+        let data = response.data;
+        if (typeof data === 'string') {
+          data = JSON.parse(data);
+        }
         
-        setBatchLogs(prev => [...prev, 
-          `[DEBUG] Type: ${typeof rawData} | Keys count: ${Object.keys(rawData).length}`,
-          `[DEBUG] Raw Content Snippet: ${snippet}`
-        ]);
         const snrVal = data.metrics?.physics?.find((m: any) => m.label === 'Transit SNR')?.value || 'N/A';
         
         setBatchResults(prev => prev.map((item, idx) => 
@@ -293,7 +289,11 @@ export const Dashboard: React.FC<DashboardProps> = ({ setBackendOnline }) => {
       
       try {
         const response = await axios.post<PredictionResult>('/api/predict', formData);
-        setResult(response.data);
+        let data = response.data;
+        if (typeof data === 'string') {
+          data = JSON.parse(data);
+        }
+        setResult(data);
         setViewState('results');
       } catch (err: any) {
         console.error("Backend error:", err);
