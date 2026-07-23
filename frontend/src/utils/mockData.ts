@@ -23,6 +23,10 @@ export interface PredictionResult {
     EB: number;
     "False Positive": number;
   };
+  pfi?: number;
+  fap?: number;
+  priority?: string;
+  recommendation?: string;
   metrics: {
     bls: MetricItem[];
     transit: MetricItem[];

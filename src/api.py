@@ -185,6 +185,36 @@ def predict():
         if len(folded_points) > 1000:
             folded_points = folded_points[::(len(folded_points) // 1000)]
         
+        # Stage 9: Calculate False Alarm Probability (FAP) & Follow-Up Index (PFI)
+        # Empirical FAP approximation based on BLS Peak Sigma (peak_significance)
+        # A Peak Sigma of 6.0 is the 50% FAP threshold, higher peak sigmas yield FAP -> 0.0
+        import math
+        fap = 1.0 / (1.0 + math.exp(1.5 * (bls_res.peak_significance - 6.0)))
+        
+        # PFI = XGBoost's Exoplanet Probability * log(Transit SNR) * (1 - FAP)
+        transit_snr = features.get("transit_snr", 1.0)
+        exoplanet_prob = prediction["probabilities"]["Planet"]
+        log_snr = math.log(max(transit_snr, 1.01))
+        pfi = exoplanet_prob * log_snr * (1.0 - fap)
+        
+        # Categorize priority based on PFI score & classification
+        if prediction["class_label"] == "Planet":
+            if pfi >= 1.2:
+                priority = "HIGH"
+                recommendation = "Highly Recommended for Telescope Follow-up"
+            elif pfi >= 0.5:
+                priority = "MEDIUM"
+                recommendation = "Candidate Exoplanet: Secondary Target"
+            else:
+                priority = "LOW"
+                recommendation = "Low Significance Exoplanet Candidate"
+        elif prediction["class_label"] == "EB":
+            priority = "LOW"
+            recommendation = "Likely Eclipsing Binary: Check Alternating Depth"
+        else:
+            priority = "LOW"
+            recommendation = "High False Alarm Probability / Instrumental Blend"
+
         # Build structure matching the frontend expect metrics tabs
         response = {
             "tic_id": int(bls_res.tic_id),
@@ -193,6 +223,10 @@ def predict():
             "class_label": prediction["class_label"],
             "confidence": prediction["confidence"],
             "probabilities": prediction["probabilities"],
+            "pfi": float(pfi),
+            "fap": float(fap),
+            "priority": priority,
+            "recommendation": recommendation,
             "metrics": {
                 "bls": [
                     { "label": "Period", "value": f"{bls_res.detected_period:.4f} days", "description": "Transit repeat interval" },
