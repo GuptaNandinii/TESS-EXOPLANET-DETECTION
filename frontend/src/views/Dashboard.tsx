@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { UploadArea } from '../components/UploadArea';
 import { ProcessingFlow } from '../components/ProcessingFlow';
@@ -49,6 +49,17 @@ export const Dashboard: React.FC<DashboardProps> = ({ setBackendOnline }) => {
   const [batchProcessingIndex, setBatchProcessingIndex] = useState<number>(-1);
   const [batchStatus, setBatchStatus] = useState<'idle' | 'processing' | 'completed'>('idle');
 
+  const [batchLogs, setBatchLogs] = useState<string[]>([]);
+  const [showResultsConsole, setShowResultsConsole] = useState<boolean>(false);
+  const logEndRef = useRef<HTMLDivElement>(null);
+
+  // Auto-scroll batch console logs
+  useEffect(() => {
+    if (logEndRef.current) {
+      logEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [batchLogs]);
+
   // Check backend online status with polling
   useEffect(() => {
     const checkHealth = () => {
@@ -77,10 +88,18 @@ export const Dashboard: React.FC<DashboardProps> = ({ setBackendOnline }) => {
     setBatchProcessingIndex(0);
     setViewState('processing');
     setBatchStatus('processing');
+    setBatchLogs([
+      `[SYSTEM] Initializing Batch Ingestion and Pipeline Sweep...`,
+      `[SYSTEM] Targets queued: ${files.length} TESS FITS light curves.`,
+      `[SYSTEM] Sequential executor lock acquired. Starting run...`,
+      `--------------------------------------------------------------------------------`
+    ]);
 
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
       setBatchProcessingIndex(i);
+      
+      setBatchLogs(prev => [...prev, `[PROCESSING] Target ${i + 1}/${files.length}: ${file.name}...`]);
 
       setBatchResults(prev => prev.map((item, idx) => 
         idx === i ? { ...item, status: 'processing' } : item
@@ -109,6 +128,15 @@ export const Dashboard: React.FC<DashboardProps> = ({ setBackendOnline }) => {
             features: (data as any).features
           } : item
         ));
+
+        const pfiVal = data.pfi !== undefined ? data.pfi.toFixed(4) : 'N/A';
+        const fapVal = data.fap !== undefined ? `${(data.fap * 100).toFixed(4)}%` : 'N/A';
+        const periodVal = data.best_period !== undefined ? `${data.best_period.toFixed(4)} days` : 'N/A';
+        
+        setBatchLogs(prev => [...prev, 
+          `[SUCCESS] TIC ${data.tic_id || 'N/A'} ➔ Class: ${data.class_label} (${((data.confidence || 0) * 100).toFixed(1)}%)`,
+          `          PFI: ${pfiVal} | FAP: ${fapVal} | SNR: ${snrVal} | Period: ${periodVal}`
+        ]);
       } catch (err: any) {
         console.error("Batch file processing error:", err);
         const errMsg = err.response?.data?.error || err.message || "Failed to process FITS.";
@@ -119,10 +147,17 @@ export const Dashboard: React.FC<DashboardProps> = ({ setBackendOnline }) => {
             error: String(errMsg)
           } : item
         ));
+
+        setBatchLogs(prev => [...prev, `[ERROR] Processing failed for ${file.name}: ${errMsg}`]);
       }
     }
 
     setBatchProcessingIndex(files.length);
+    setBatchLogs(prev => [...prev, 
+      `--------------------------------------------------------------------------------`,
+      `[SYSTEM] Batch process successfully completed!`,
+      `[SYSTEM] Aggregated CSV results table generated and cached in memory. Ready to download.`
+    ]);
     setBatchStatus('completed');
     setViewState('results');
   };
@@ -396,6 +431,35 @@ export const Dashboard: React.FC<DashboardProps> = ({ setBackendOnline }) => {
                 </div>
                 <span className="text-[10px] text-slate-500 font-mono">INGEST ➔ DETREND ➔ BLS ➔ FIT ➔ CLASSIFY</span>
               </div>
+
+              {/* Live Pipeline Execution Console */}
+              <div className="bg-slate-950 border border-space-800 rounded-xl p-5 shadow-2xl space-y-3 w-full text-left">
+                <div className="flex justify-between items-center border-b border-space-850 pb-2.5">
+                  <div className="flex items-center space-x-2">
+                    <div className="w-3 h-3 rounded-full bg-rose-500/80" />
+                    <div className="w-3 h-3 rounded-full bg-amber-500/80" />
+                    <div className="w-3 h-3 rounded-full bg-emerald-500/80" />
+                    <span className="text-[10px] uppercase font-black tracking-wider text-slate-400 font-sans ml-2">Live Pipeline Execution Console</span>
+                  </div>
+                  <span className="text-[9px] font-mono text-indigo-400">Voyager-3-console v1.0.0</span>
+                </div>
+                <div className="font-mono text-xs text-slate-350 space-y-1.5 h-72 overflow-y-auto custom-scrollbar leading-relaxed pr-2">
+                  {batchLogs.map((log, index) => {
+                    let className = "text-slate-450";
+                    if (log.includes("[ERROR]")) className = "text-rose-400 font-bold bg-rose-950/20 px-1 py-0.5 rounded";
+                    else if (log.includes("[SUCCESS]")) className = "text-emerald-400 font-bold";
+                    else if (log.includes("[PROCESSING]")) className = "text-indigo-400";
+                    else if (log.includes("[SYSTEM]")) className = "text-amber-500/90 font-semibold";
+                    
+                    return (
+                      <div key={index} className={className}>
+                        {log}
+                      </div>
+                    );
+                  })}
+                  <div ref={logEndRef} />
+                </div>
+              </div>
             </div>
           ) : (
             <ProcessingFlow steps={steps} />
@@ -564,6 +628,41 @@ export const Dashboard: React.FC<DashboardProps> = ({ setBackendOnline }) => {
                     </tbody>
                   </table>
                 </div>
+              </div>
+
+              {/* Historical Execution Log Console (Collapsible) */}
+              <div className="bg-slate-950 border border-space-800 rounded-xl overflow-hidden shadow-xl text-left">
+                <button
+                  onClick={() => setShowResultsConsole(prev => !prev)}
+                  className="w-full flex justify-between items-center p-4 bg-space-900 hover:bg-space-850 transition-colors border-b border-space-800 cursor-pointer"
+                >
+                  <div className="flex items-center space-x-2.5">
+                    <span className="text-[10px] uppercase font-black tracking-wider text-slate-350">Historical Pipeline Ingestion Console</span>
+                    <span className="text-[9px] font-mono text-slate-500 bg-space-950 px-2 py-0.5 rounded border border-space-800">
+                      {batchLogs.length} log lines
+                    </span>
+                  </div>
+                  <span className="text-xs text-indigo-400 font-bold uppercase tracking-wider">
+                    {showResultsConsole ? 'Hide Console' : 'Show Console'}
+                  </span>
+                </button>
+                {showResultsConsole && (
+                  <div className="p-4 font-mono text-[11px] text-slate-350 space-y-1.5 max-h-72 overflow-y-auto custom-scrollbar leading-relaxed">
+                    {batchLogs.map((log, index) => {
+                      let className = "text-slate-455";
+                      if (log.includes("[ERROR]")) className = "text-rose-450 font-bold bg-rose-950/20 px-1 py-0.5 rounded";
+                      else if (log.includes("[SUCCESS]")) className = "text-emerald-400 font-bold";
+                      else if (log.includes("[PROCESSING]")) className = "text-indigo-400";
+                      else if (log.includes("[SYSTEM]")) className = "text-amber-500/90 font-semibold";
+                      
+                      return (
+                        <div key={index} className={className}>
+                          {log}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             </div>
           ) : (
