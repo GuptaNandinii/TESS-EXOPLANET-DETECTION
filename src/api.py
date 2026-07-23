@@ -24,6 +24,18 @@ try:
 except Exception as e:
     print(f"Warning: Failed to load classifier model: {str(e)}")
 
+import math
+
+def sanitize_json_value(val):
+    if isinstance(val, dict):
+        return {k: sanitize_json_value(v) for k, v in val.items()}
+    elif isinstance(val, list):
+        return [sanitize_json_value(v) for v in val]
+    elif isinstance(val, float):
+        if math.isnan(val) or math.isinf(val):
+            return None
+    return val
+
 @app.route('/api/health', methods=['GET'])
 def health():
     return jsonify({"status": "healthy"})
@@ -277,7 +289,7 @@ def predict():
             "bls_max_duration": float(bls_detector.max_duration)
         }
         
-        return jsonify(response)
+        return jsonify(sanitize_json_value(response))
         
     except Exception as e:
         import traceback
