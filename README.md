@@ -1,19 +1,32 @@
-# Exoplanet Detection System (TESS Survey Transit Pipeline)
-
-[![Python Version](https://img.shields.io/badge/Python-3.9%20%7C%203.10%20%7C%203.11-blue.svg)](https://www.python.org/)
-[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Data Source](https://img.shields.io/badge/Data%20Source-NASA%20TESS-orange.svg)](https://heasarc.gsfc.nasa.gov/docs/tess/tess.html)
-[![Classifier](https://img.shields.io/badge/Classifier-XGBoost%20v2.0-indigo.svg)](https://xgboost.readthedocs.io/)
-[![PFI Priority](https://img.shields.io/badge/Prioritization-PARAS--2%20PFI-red.svg)](#differentiator-3-paras-2-follow-up-priority-index-pfi)
-
-An end-to-end, scientifically calibrated exoplanet detection platform that reads raw NASA TESS (Transiting Exoplanet Survey Satellite) FITS files, cleans and detrends light curves, runs a Box Least Squares (BLS) transit search, fits a physical trapezoid model using Levenberg-Marquardt optimization, extracts 14 unified shape features, and runs them through a pre-trained XGBoost classifier to identify **Exoplanets (Planets)**, **Eclipsing Binaries (EBs)**, and **False Positives (FPs)**.
-
-Includes a Flask API backend and an interactive, React-based scientific dashboard.
+# 🚀 AI-Enabled Detection of Exoplanets from Noisy Astronomical Light Curves
+### **Bharatiya Antariksh Hackathon (BAH) 2026**
+**Team Name:** Voyager 3  
+**College:** Acropolis Institute of Technology and Research  
 
 ---
 
-## Unified Ingestion & Processing Flowchart
-This diagram outlines the complete multi-stage processing pipeline implemented from Slide 7 of the Voyager 3 architecture deck:
+## 👥 Team Members & Roles
+*   **Nandini Gupta (Team Leader)**: Pipeline Orchestration & Optimization, Backend Integration
+*   **Harsh Joshi (Team Member)**: AI Classifier Development, XGBoost Modeling
+*   **Nandini Gupta (Team Member)**: Feature Engineering, Physical Mathematical Formulas
+*   **Kushagra Takjhare (Team Member)**: UI/UX Engineering & Interactive Visualization
+
+---
+
+## 🌌 Project Overview
+Voyager 3 is an end-to-end, scientifically calibrated exoplanet detection platform designed to automate the discovery of transiting exoplanets from raw NASA TESS (Transiting Exoplanet Survey Satellite) FITS files. 
+
+The pipeline ingests raw light curves, filters quality anomalies, detrends stellar variability, performs a Box Least Squares (BLS) transit search, fits a physical trapezoid model using Levenberg-Marquardt optimization, extracts 24 morphological and astrophysical shape features, and runs them through a trained XGBoost classifier to identify:
+1.  **Exoplanet Candidates (Planets)**
+2.  **Eclipsing Binaries (EBs)**
+3.  **False Positives (FPs)** (instrumental noise, background stars, or stellar variability)
+
+To solve the key challenge of limited follow-up resources, we introduce the **PARAS-2 Follow-up Priority Index (PFI)**, which rank-orders targets to optimize telescope follow-up hours.
+
+---
+
+## 📊 Unified Ingestion & Processing Flowchart
+This diagram outlines the complete multi-stage processing pipeline implemented in the Voyager 3 architecture:
 
 ```mermaid
 graph TD
@@ -60,31 +73,44 @@ graph TD
 
 ---
 
-## Detailed Pipeline Stages
+## ⚙️ Detailed Pipeline Stages & Mathematical Background
 
-### 1. Ingestion & Detrending (`src/pipeline/fits_reader.py`, `src/pipeline/preprocessing.py`)
-- **Quality Filtering**: Discards bad cadences where $\text{QUALITY} \neq 0$ to remove background flares, cosmic rays, and satellite wiggles.
-- **Savitzky-Golay Detrending**: Estimates the local stellar baseline $B(t)$ by fitting a local polynomial of degree $d$ over a sliding window of length $W$:
-  $$y_i = \sum_{j=0}^{d} c_j i^j$$
-  We employ $W=1001$ cadences and $d=2$.
-- **Relative Residuals**: Produces `Normalized_Flux` ($F_{\text{norm}}$) and relative residuals `Detrended_Flux` ($F_{\text{det}}$) centered around $0.0$:
-  $$F_{\text{norm}}(t) = \frac{F(t)}{B(t)}, \quad F_{\text{det}}(t) = \frac{F(t) - B(t)}{B(t)}$$
+### 1. Ingestion & Quality Filtering
+We ingest NASA TESS files in `.fits` format. Discards bad cadences where the quality flag $\text{QUALITY} \neq 0$ (e.g., removing background flares, cosmic rays, instrument wiggles, and sensor anomalies).
 
-### 2. Box Least Squares (BLS) Search (`src/pipeline/bls_detector.py`)
-Scans the detrended light curve sector-by-sector for periodic, box-like transit dips.
-- **Search Grid**: Searches a linear grid of **6,000 trial periods** between 0.5 and 15.0 days, and **50 trial durations** (approx. 1 to 12 hours).
-- **BLS Power Metric**: Computes the chi-squared difference between a flat line model and a periodic step-function transit model:
-  $$\text{Power}(P) = \Delta \chi^2(P) = \chi^2_{\text{flat}} - \chi^2_{\text{transit}}(P) = \frac{\left( \sum w_i (y_i - 1) \right)^2}{\sum w_i}$$
-  where the weights are $w_i = \frac{1}{\sigma_{F, \text{norm}, i}^2}$ (inverse-variance weighting using $dy$).
+### 2. Savitzky-Golay Detrending
+To isolate the transit signal, we model and subtract low-frequency stellar variability (rotation, spots, pulsations) using a Savitzky-Golay filter. Over a moving window $W$, it fits a local polynomial of degree $d$:
+$$y_i = \sum_{j=0}^{d} c_j i^j$$
+*   We use a window size of $W = 1001$ cadences and polynomial degree of $d = 2$.
+*   Relative residuals (Detrended Flux $F_{\text{det}}$) centered around $0.0$ are calculated as:
+$$F_{\text{norm}}(t) = \frac{F(t)}{B(t)}, \quad F_{\text{det}}(t) = \frac{F(t) - B(t)}{B(t)}$$
+where $B(t)$ represents the estimated stellar baseline.
 
-### 3. Trapezoidal Model Fitting (`src/pipeline/trapezoid_fit.py`, `src/pipeline/phase_folding.py`)
-- **Phase Folding**: Folds the light curve around the detected period ($P$) and epoch ($T_0$), centering the phase domain in $[-0.5, 0.5]$:
-  $$\phi(t) = \left( \frac{t - T_0 + 0.5 P \pmod P}{P} \right) - 0.5$$
-- **Levenberg-Marquardt Optimization**: Fits a physical trapezoid model to the folded data inside a window cropped to 3 times the transit width. The model extracts transit depth ($\delta$), total duration ($T_{\text{tot}}$), ingress duration ($T_{\text{in}}$), and reduced $\chi^2$.
+### 3. Box Least Squares (BLS) Search
+We run a weighted periodic Box Least Squares transit search on $F_{\text{det}}$:
+*   **Search Parameters**: 6,000 trial periods (0.5 to 15 days) and 50 trial durations (1 to 12 hours).
+*   **Weighted Power**: Invokes inverse-variance weighting using flux uncertainties $\sigma_{i}$ to compute the chi-squared difference between a flat line model and a periodic transit model:
+$$\text{Power}(P) = \Delta \chi^2(P) = \chi^2_{\text{flat}} - \chi^2_{\text{transit}}(P) = \frac{\left( \sum w_i (y_i - 1) \right)^2}{\sum w_i}$$
+where $w_i = \frac{1}{\sigma_i^2}$.
+
+### 4. Phase Folding & Trapezoidal Model Fitting
+*   **Phase Folding**: Folds the light curve around the detected period ($P$) and epoch ($T_0$), centering the phase domain in $[-0.5, 0.5]$:
+$$\phi(t) = \left( \frac{t - T_0 + 0.5 P \pmod P}{P} \right) - 0.5$$
+*   **Levenberg-Marquardt Trapezoidal Fit**: We fit a physical 4-parameter trapezoid model (depth $\delta$, total duration $T_{\text{tot}}$, ingress duration $T_{\text{in}}$, and epoch offset $t_0$) inside a cropped window to extract clean transit morphology.
+
+### 5. Multi-Stage Scientific Confidence Metrics
+*   **Transit Signal-to-Noise Ratio (SNR)**:
+$$\text{SNR} = \left(\frac{\delta}{\sigma_{1h}}\right) \sqrt{N_{\text{tr}}}$$
+*   **Signal Detection Efficiency (SDE)**:
+$$\text{SDE} = \frac{\text{SR}_{\text{obs}} - \mu_{\text{SR}}}{\sigma_{\text{SR}}}$$
+*   **False Alarm Probability (FAP)**: Estimating signal probability from bootstrap resampling:
+$$\text{FAP} = \frac{N_{\text{boot}}(\text{SR} \ge \text{SR}_{\text{obs}})}{N_{\text{boot}}}$$
+*   **Reduced $\chi^2$ (Goodness-of-Fit)**:
+$$\chi^2_{\text{red}} = \frac{\chi^2}{N - p}$$
 
 ---
 
-## Key Differentiators 
+## ⚡ Key Scientific Differentiators
 
 ### Differentiator 1: Physics-Guided Transit Shape Discriminants
 Instead of feeding raw, noisy flux curves into black-box neural networks, we extract physical transit shape metrics to separate exoplanets, eclipsing binaries, and background blends:
@@ -100,47 +126,46 @@ Instead of feeding raw, noisy flux curves into black-box neural networks, we ext
 
 ---
 
-### Differentiator 2: Multi-Stage Scientific Confidence Assessment
-Detection confidence is established through signal quality, statistical significance, model consistency, and AI classification confidence:
+### Differentiator 2: PARAS-2 Follow-up Priority Index (PFI)
+To solve the bottleneck of limited telescope follow-up time, we developed the **PARAS-2 Follow-up Priority Index (PFI)**. This combines the ML classification confidence with physical detection significance to rank candidates:
 
-| Confidence Metric | Formula / Representation | Computed From | What Questions We Answered |
-| :--- | :--- | :--- | :--- |
-| **Transit Signal-to-Noise Ratio (SNR)** | $\text{SNR} = \left(\frac{\delta}{\sigma_{1h}}\right) \sqrt{N_{\text{tr}}}$ | Transit Depth ($\delta$) + Out-of-transit RMS noise | Is the detected transit distinguishable from the photometric noise? |
-| **Signal Detection Efficiency (SDE)** | $\text{SDE} = \frac{\text{SR} - \mu_{\text{SR}}}{\sigma_{\text{SR}}}$ | Weighted BLS Periodogram | How significant is the detected period relative to all trial periods? |
-| **False Alarm Probability (FAP)** | $\text{FAP} = \frac{N_{\text{boot}}(\text{SR} \ge \text{SR}_{\text{obs}})}{N_{\text{boot}}}$ | BLS Peak Significance | Could the detected periodic signal arise purely from random noise? |
-| **Reduced $\chi^2$ (Goodness-of-Fit)** | $\chi^2_{\text{red}} = \frac{\chi^2}{N - p}$ | Trapezoid Transit Fit Residuals | Does the fitted transit model accurately represent the observed light curve? |
-| **XGBoost Posterior Probability** | $P(\text{Class} \mid X)$ | Engineered Physics Feature Vector | Which astrophysical class best matches the extracted transit features? |
+$$\text{PFI} = P(\text{Planet}) \times \ln(\text{Transit SNR}) \times (1 - \text{FAP})$$
+
+Targets with a higher PFI score represent high-probability, high-significance, low-noise exoplanet candidates that warrant radial velocity (RV) follow-up using spectrographs like PARAS-2.
 
 ---
 
-### Differentiator 3: PARAS-2 Follow-up Priority Index (PFI)
-AI predictions alone are insufficient for prioritizing telescope time. Voyager 3 implements the **PARAS-2 Follow-Up Index (PFI)**, combining classification confidence with physical significance to prioritize telescope hours:
-
-$$\text{PFI} = \text{XGBoost's Probability of Planet} \times \ln(\text{Transit SNR}) \times (1 - \text{FAP})$$
-
-This prioritizes high-confidence, high-SNR, low-FAP targets for ground-based radial velocity (RV) follow-up, ensuring telescope time is spent on the most promising candidates.
+## 🛠️ Latest Robustness & Stability Optimizations
+During physical evaluation sweeps of the complete 1,612 star catalog, we encountered and resolved several edge-case pipeline failure modes:
+1.  **Strict Mode Ingestion Race Condition**: Refactored the batch processing loop from a React state-dependent effect to a single, sequential, locking `for` loop. This avoids the concurrent double-triggers introduced by React Strict Mode, which caused targets to be skipped.
+2.  **Large Payload Auto-Parsing**: Added string-matching checks to auto-parse responses. Very large FITS sweeps (containing 260K+ characters of plot coordinates) sometimes arrive as raw strings due to proxy chunking limits, and are now successfully parsed.
+3.  **NaN / Infinity Response Sanitization**: Added a recursive python sanitizer `sanitize_json_value(response)` to automatically clean up all metrics containing `NaN` or `inf` before Flask serialization. These are converted to `None` (`null` in JSON), eliminating browser JSON parsing crashes.
 
 ---
 
-## How to Run Locally
+## 📥 How to Run Locally
 
 ### Prerequisites
-- Python 3.9+
-- Node.js 18+
+*   Python 3.9+
+*   Node.js 18+
 
 ### Setup & Run
-1. Clone the repository and navigate to the project directory.
-2. Install Python dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
-3. Install Node dependencies:
-   ```bash
-   npm install
-   ```
-4. Start both the Python API backend and React dev frontend concurrently:
-   ```bash
-   npm run dev
-   ```
-5. Open your browser and navigate to:
-   **[http://localhost:5173](http://localhost:5173)** (or the port specified in the terminal).
+1.  Clone the repository:
+    ```bash
+    git clone https://github.com/GuptaNandinii/TESS-EXOPLANET-DETECTION.git
+    cd TESS-EXOPLANET-DETECTION
+    ```
+2.  Install Python dependencies:
+    ```bash
+    pip install -r requirements.txt
+    ```
+3.  Install Frontend dependencies:
+    ```bash
+    npm install
+    ```
+4.  Start both the Python API backend and React dev frontend concurrently:
+    ```bash
+    npm run dev
+    ```
+5.  Open your browser and navigate to:
+    👉 **[http://localhost:5173](http://localhost:5173)**
