@@ -37,14 +37,15 @@ def predict():
     if file.filename == '':
         return jsonify({"error": "No file selected"}), 400
 
-    # Save FITS upload to temporary directory
+    # Save FITS upload to temporary directory (flatten path to handle folder uploads)
     temp_dir = tempfile.gettempdir()
-    temp_path = os.path.join(temp_dir, file.filename)
+    filename = os.path.basename(file.filename)
+    temp_path = os.path.join(temp_dir, filename)
     file.save(temp_path)
     
     try:
         # 1. Read TESS FITS file
-        df_raw = read_tess_fits(temp_path, filename=file.filename)
+        df_raw = read_tess_fits(temp_path, filename=filename)
         
         # 2. Preprocess & Detrend
         preprocessor = Preprocessor()
