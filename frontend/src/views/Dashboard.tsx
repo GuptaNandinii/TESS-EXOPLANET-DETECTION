@@ -111,6 +111,10 @@ export const Dashboard: React.FC<DashboardProps> = ({ setBackendOnline }) => {
       try {
         const response = await axios.post<PredictionResult>('/api/predict', formData);
         const data = response.data;
+        console.log("DEBUG RESPONSE DATA:", data);
+        const responseKeys = Object.keys(data).join(', ');
+        
+        setBatchLogs(prev => [...prev, `[DEBUG] Keys received: ${responseKeys}`]);
         const snrVal = data.metrics?.physics?.find((m: any) => m.label === 'Transit SNR')?.value || 'N/A';
         
         setBatchResults(prev => prev.map((item, idx) => 
