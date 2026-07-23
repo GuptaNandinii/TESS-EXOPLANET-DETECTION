@@ -326,7 +326,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ setBackendOnline }) => {
                   />
                 </div>
                 
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-2">
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-4 pt-2">
                   <div className="bg-space-950/60 border border-space-850 p-3 rounded-lg text-center">
                     <span className="text-[10px] text-slate-500 uppercase tracking-wider block font-bold mb-1">Processed</span>
                     <span className="text-lg font-bold font-mono text-slate-200">{batchProcessingIndex} / {batchFiles.length}</span>
@@ -344,8 +344,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ setBackendOnline }) => {
                     </span>
                   </div>
                   <div className="bg-space-950/60 border border-space-850 p-3 rounded-lg text-center">
-                    <span className="text-[10px] text-rose-500 uppercase tracking-wider block font-bold mb-1">Failed / Errors</span>
+                    <span className="text-[10px] text-rose-500 uppercase tracking-wider block font-bold mb-1">False Positives</span>
                     <span className="text-lg font-bold font-mono text-rose-400">
+                      {batchResults.filter(r => r.class_label === 'False Positive').length}
+                    </span>
+                  </div>
+                  <div className="bg-space-950/60 border border-space-850 p-3 rounded-lg text-center">
+                    <span className="text-[10px] text-red-500 uppercase tracking-wider block font-bold mb-1">Failed / Errors</span>
+                    <span className="text-lg font-bold font-mono text-red-400">
                       {batchResults.filter(r => r.status === 'failed').length}
                     </span>
                   </div>
@@ -406,7 +412,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ setBackendOnline }) => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-6">
                 <div className="bg-space-900 border border-space-800 p-5 rounded-xl text-center shadow-lg">
                   <span className="text-xs text-slate-500 uppercase tracking-wider font-bold block mb-1">Total Targets</span>
                   <span className="text-3xl font-black font-mono text-slate-200">{batchResults.length}</span>
@@ -425,8 +431,14 @@ export const Dashboard: React.FC<DashboardProps> = ({ setBackendOnline }) => {
                 </div>
                 <div className="bg-space-900 border border-space-800 p-5 rounded-xl text-center shadow-lg">
                   <span className="text-xs text-rose-500 uppercase tracking-wider font-bold block mb-1">False Positives</span>
-                  <span className="text-3xl font-black font-mono text-rose-400">
+                  <span className="text-3xl font-black font-mono text-rose-455">
                     {batchResults.filter(r => r.class_label === 'False Positive').length}
+                  </span>
+                </div>
+                <div className="bg-space-900 border border-space-800 p-5 rounded-xl text-center shadow-lg">
+                  <span className="text-xs text-red-500 uppercase tracking-wider font-bold block mb-1">Failed / Errors</span>
+                  <span className="text-3xl font-black font-mono text-red-400">
+                    {batchResults.filter(r => r.status === 'failed').length}
                   </span>
                 </div>
               </div>
