@@ -68,7 +68,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ setBackendOnline }) => {
     return () => clearInterval(interval);
   }, [setBackendOnline]);
 
-  const handleBatchFilesSelected = (files: File[]) => {
+  const handleBatchFilesSelected = async (files: File[]) => {
     setBatchFiles(files);
     setBatchResults(files.map(f => ({
       filename: f.name,
@@ -77,24 +77,13 @@ export const Dashboard: React.FC<DashboardProps> = ({ setBackendOnline }) => {
     setBatchProcessingIndex(0);
     setViewState('processing');
     setBatchStatus('processing');
-  };
 
-  // Batch execution loop
-  useEffect(() => {
-    if (batchStatus !== 'processing' || batchProcessingIndex < 0 || batchProcessingIndex >= batchFiles.length) {
-      if (batchStatus === 'processing' && batchProcessingIndex === batchFiles.length) {
-        setBatchStatus('completed');
-        setViewState('results');
-      }
-      return;
-    }
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      setBatchProcessingIndex(i);
 
-    const processFile = async () => {
-      const file = batchFiles[batchProcessingIndex];
-      
-      // Update status to processing
       setBatchResults(prev => prev.map((item, idx) => 
-        idx === batchProcessingIndex ? { ...item, status: 'processing' } : item
+        idx === i ? { ...item, status: 'processing' } : item
       ));
 
       const formData = new FormData();
@@ -106,7 +95,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ setBackendOnline }) => {
         const snrVal = data.metrics?.physics?.find((m: any) => m.label === 'Transit SNR')?.value || 'N/A';
         
         setBatchResults(prev => prev.map((item, idx) => 
-          idx === batchProcessingIndex ? {
+          idx === i ? {
             filename: file.name,
             tic_id: data.tic_id,
             class_label: data.class_label,
@@ -124,20 +113,19 @@ export const Dashboard: React.FC<DashboardProps> = ({ setBackendOnline }) => {
         console.error("Batch file processing error:", err);
         const errMsg = err.response?.data?.error || err.message || "Failed to process FITS.";
         setBatchResults(prev => prev.map((item, idx) => 
-          idx === batchProcessingIndex ? {
+          idx === i ? {
             filename: file.name,
             status: 'failed',
             error: String(errMsg)
           } : item
         ));
       }
+    }
 
-      // Move to next file
-      setBatchProcessingIndex(prev => prev + 1);
-    };
-
-    processFile();
-  }, [batchStatus, batchProcessingIndex, batchFiles]);
+    setBatchProcessingIndex(files.length);
+    setBatchStatus('completed');
+    setViewState('results');
+  };
 
   const downloadCSV = () => {
     const baseHeaders = [
