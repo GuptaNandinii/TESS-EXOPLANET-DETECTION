@@ -44,6 +44,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ setBackendOnline }) => {
     snr?: string;
     status: 'pending' | 'processing' | 'completed' | 'failed';
     error?: string;
+    features?: Record<string, number>;
   }[]>([]);
   const [batchProcessingIndex, setBatchProcessingIndex] = useState<number>(-1);
   const [batchStatus, setBatchStatus] = useState<'idle' | 'processing' | 'completed'>('idle');
@@ -115,7 +116,8 @@ export const Dashboard: React.FC<DashboardProps> = ({ setBackendOnline }) => {
             priority: data.priority,
             recommendation: data.recommendation,
             snr: String(snrVal),
-            status: 'completed'
+            status: 'completed',
+            features: (data as any).features
           } : item
         ));
       } catch (err: any) {
@@ -138,7 +140,7 @@ export const Dashboard: React.FC<DashboardProps> = ({ setBackendOnline }) => {
   }, [batchStatus, batchProcessingIndex, batchFiles]);
 
   const downloadCSV = () => {
-    const headers = [
+    const baseHeaders = [
       "Filename",
       "TIC ID",
       "AI Classification",
@@ -151,18 +153,57 @@ export const Dashboard: React.FC<DashboardProps> = ({ setBackendOnline }) => {
       "Status"
     ];
 
-    const rows = batchResults.map(r => [
-      r.filename,
-      r.tic_id || 'N/A',
-      r.class_label || 'N/A',
-      r.confidence !== undefined ? `${(r.confidence * 100).toFixed(2)}%` : 'N/A',
-      r.pfi !== undefined ? r.pfi.toFixed(4) : 'N/A',
-      r.fap !== undefined ? `${(r.fap * 100).toFixed(4)}%` : 'N/A',
-      r.priority || 'N/A',
-      r.snr || 'N/A',
-      r.recommendation || 'N/A',
-      r.status === 'failed' ? `Failed: ${r.error}` : 'Success'
-    ]);
+    const featureKeys = [
+      { key: 'period_days', label: 'BLS Period (days)' },
+      { key: 'duration_days', label: 'BLS Duration (days)' },
+      { key: 'bls_depth', label: 'BLS Depth' },
+      { key: 'bls_power', label: 'BLS Power' },
+      { key: 'peak_sigma', label: 'BLS Peak Sigma' },
+      { key: 'depth_ppm', label: 'Trapezoid Depth (ppm)' },
+      { key: 'T_tot_hours', label: 'Trapezoid T_tot (hours)' },
+      { key: 'T_in_hours', label: 'Trapezoid T_in (hours)' },
+      { key: 'ingress_phase', label: 'Trapezoid Ingress Phase' },
+      { key: 'red_chi2', label: 'Trapezoid Reduced Chi2' },
+      { key: 'ingress_fraction', label: 'Ingress Fraction' },
+      { key: 'flat_bottom_fraction', label: 'Flat Bottom Fraction' },
+      { key: 'transit_snr', label: 'Transit SNR' },
+      { key: 'odd_even_ratio', label: 'Odd-Even Depth Ratio' },
+      { key: 'secondary_depth', label: 'Secondary Eclipse Depth' },
+      { key: 'secondary_snr', label: 'Secondary Eclipse SNR' },
+      { key: 'duty_cycle', label: 'Duty Cycle' },
+      { key: 'oot_rms', label: 'Out-Of-Transit RMS' },
+      { key: 'transit_rms', label: 'In-Transit RMS' },
+      { key: 'shape_rmse', label: 'Depth Symmetry shape_rmse' },
+      { key: 'transit_skewness', label: 'Transit Skewness' },
+      { key: 'transit_kurtosis', label: 'Transit Kurtosis' },
+      { key: 'transit_mad', label: 'Transit MAD' },
+      { key: 'transit_iqr', label: 'Transit IQR' }
+    ];
+
+    const headers = [...baseHeaders, ...featureKeys.map(fk => fk.label)];
+
+    const rows = batchResults.map(r => {
+      const baseValues = [
+        r.filename,
+        r.tic_id || 'N/A',
+        r.class_label || 'N/A',
+        r.confidence !== undefined ? `${(r.confidence * 100).toFixed(2)}%` : 'N/A',
+        r.pfi !== undefined ? r.pfi.toFixed(4) : 'N/A',
+        r.fap !== undefined ? `${(r.fap * 100).toFixed(4)}%` : 'N/A',
+        r.priority || 'N/A',
+        r.snr || 'N/A',
+        r.recommendation || 'N/A',
+        r.status === 'failed' ? `Failed: ${r.error}` : 'Success'
+      ];
+      
+      const featureValues = featureKeys.map(fk => {
+        if (r.status === 'failed' || !r.features) return 'N/A';
+        const val = r.features[fk.key];
+        return val !== undefined ? String(val) : 'N/A';
+      });
+
+      return [...baseValues, ...featureValues];
+    });
 
     const csvContent = "data:text/csv;charset=utf-8," 
       + [headers.join(","), ...rows.map(e => e.map(val => `"${val}"`).join(","))].join("\n");

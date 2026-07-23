@@ -217,6 +217,11 @@ def predict():
             recommendation = "High False Alarm Probability / Instrumental Blend"
 
         # Build structure matching the frontend expect metrics tabs
+        serializable_features = {
+            k: float(v) if hasattr(v, 'item') else float(v)
+            for k, v in full_features.items()
+        }
+
         response = {
             "tic_id": int(bls_res.tic_id),
             "sectors": int(bls_res.number_of_sectors),
@@ -228,6 +233,7 @@ def predict():
             "fap": float(fap),
             "priority": priority,
             "recommendation": recommendation,
+            "features": serializable_features,
             "metrics": {
                 "bls": [
                     { "label": "Period", "value": f"{bls_res.detected_period:.4f} days", "description": "Transit repeat interval" },
