@@ -5,11 +5,8 @@
 
 ---
 
-## 👥 Team Members & Roles
-*   **Nandini Gupta (Team Leader)**: Pipeline Orchestration & Optimization, Backend Integration
-*   **Harsh Joshi (Team Member)**: AI Classifier Development, XGBoost Modeling
-*   **Nandini Gupta (Team Member)**: Feature Engineering, Physical Mathematical Formulas
-*   **Kushagra Takjhare (Team Member)**: UI/UX Engineering & Interactive Visualization
+## 👩‍💻 Author & Lead Developer
+*   **Nandini Gupta**: End-to-End Pipeline Orchestration, AI Classifier Development, Feature Engineering, Physical Modeling & Architecture
 
 ---
 
